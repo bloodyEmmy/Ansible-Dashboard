@@ -3,75 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ansible Run History</title>
+    <title>Ansible Audit Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Dashboard: История Ansible</h1>
+        <header>
+            <h1>Ansible Audit Dashboard</h1>
+        </header>
         
-        <div class="filters">
-            <input type="date" id="start_date" placeholder="Начало">
-            <input type="date" id="end_date" placeholder="Конец">
-            <input type="text" id="user" placeholder="Имя пользователя">
-            <button onclick="loadHistory()">Найти</button>
+        <div class="dashboard-grid">
+            <div class="panel filters-panel">
+                <h3>Фильтры</h3>
+                <div class="filter-group">
+                    <label>С даты:</label>
+                    <input type="date" id="start_date">
+                </div>
+                <div class="filter-group">
+                    <label>По дату:</label>
+                    <input type="date" id="end_date">
+                </div>
+                <div class="filter-group">
+                    <label>Пользователь:</label>
+                    <input type="text" id="user" placeholder="a.ivanov">
+                </div>
+                <div class="filter-group">
+                    <label>Название Playbook:</label>
+                    <input type="text" id="playbook" placeholder="nginx_proxy.yml">
+                </div>
+                <button onclick="loadHistory()">Применить фильтры</button>
+            </div>
+            <div class="panel chart-panel">
+                <canvas id="statusChart"></canvas>
+            </div>
         </div>
 
-        <table id="historyTable">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Playbook</th>
-                    <th>Пользователь</th>
-                    <th>Статус</th>
-                    <th>Начало</th>
-                    <th>Конец</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
+        <div class="panel table-panel">
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>№</th> <th>Playbook (клик для просм.)</th>
+                        <th>Пользователь</th>
+                        <th>Статус</th>
+                        <th>Запуск</th>
+                        <th>Длительность</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="codeModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <pre><code id="modalCode"></code></pre>
+        </div>
     </div>
 
     <script>
-        // Функция, которая ходит в наше API
+        let myChart = null;
+
+        // Преобразование даты в формат ДД.ММ.ГГГГ ЧЧ:ММ:СС
+        function formatRuDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('ru-RU', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).replace(',', '');
+        }
+
+        function getDuration(start, end) {
+            const diff = new Date(end) - new Date(start);
+            const minutes = Math.floor(diff / 60000);
+            const seconds = ((diff % 60000) / 1000).toFixed(0);
+            return `${minutes}м ${seconds}с`;
+        }
+
         async function loadHistory() {
-            // Собираем данные с полей
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
             const user = document.getElementById('user').value;
+            const playbook = document.getElementById('playbook').value;
 
-            // Формируем URL с параметрами
             let url = new URL('/api/history', window.location.origin);
             if (startDate) url.searchParams.append('start_date', startDate + " 00:00:00");
             if (endDate) url.searchParams.append('end_date', endDate + " 23:59:59");
             if (user) url.searchParams.append('user', user);
+            if (playbook) url.searchParams.append('playbook', playbook);
 
             try {
                 const response = await fetch(url);
                 const result = await response.json();
                 
                 const tbody = document.querySelector('#historyTable tbody');
-                tbody.innerHTML = ''; // Очищаем старые данные
+                tbody.innerHTML = ''; 
 
-                // Рисуем новые данные
+                let successCount = 0, failedCount = 0;
+                let counter = 1; // Человеческий счетчик строк
+
                 result.data.forEach(run => {
+                    if (run.status === 'SUCCESS') successCount++;
+                    else failedCount++;
+
                     const row = `<tr>
-                        <td>${run.id}</td>
-                        <td><strong>${run.playbook_name}</strong></td>
+                        <td>${counter++}</td>
+                        <td class="playbook-name" onclick="viewPlaybook('${run.playbook_name}')">${run.playbook_name}</td>
                         <td>${run.user}</td>
-                        <td class="status-${run.status.toLowerCase()}">${run.status}</td>
-                        <td>${run.start_time}</td>
-                        <td>${run.end_time}</td>
+                        <td><span class="badge ${run.status.toLowerCase()}">${run.status}</span></td>
+                        <td class="time-col">${formatRuDate(run.start_time)}</td>
+                        <td class="time-col">${getDuration(run.start_time, run.end_time)}</td>
                     </tr>`;
                     tbody.innerHTML += row;
                 });
-            } catch (error) {
-                console.error("Ошибка загрузки данных:", error);
-            }
+
+                updateChart(successCount, failedCount);
+            } catch (error) { console.error("Ошибка API:", error); }
         }
 
-        // Загружаем всю историю при открытии страницы
+        async function viewPlaybook(filename) {
+            try {
+                const response = await fetch(`/api/playbook/${filename}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    document.getElementById('modalTitle').innerText = filename;
+                    document.getElementById('modalCode').innerText = result.content;
+                    document.getElementById('codeModal').style.display = "block";
+                }
+            } catch (error) { alert("Ошибка загрузки файла"); }
+        }
+
+        function closeModal() {
+            document.getElementById('codeModal').style.display = "none";
+        }
+
+        function updateChart(success, failed) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['Успешно', 'Ошибка'], datasets: [{ data: [success, failed], backgroundColor: ['#2ecc71', '#e74c3c'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
         window.onload = loadHistory;
     </script>
 </body>

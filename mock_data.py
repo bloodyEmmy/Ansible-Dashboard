@@ -1,29 +1,53 @@
 import sqlite3
 import random
+import os
 from datetime import datetime, timedelta
 from database import init_db, get_connection
 
-# Инициализируем пустую базу
 init_db()
 
-playbooks = ['geerlingguy.docker', 'nginx_setup.yml', 'deploy_k8s_nodes.yml', 'update_packages.yml']
-users = ['m.trikhunkov', 'devops_intern', 'system_auto']
-statuses = ['SUCCESS', 'SUCCESS', 'SUCCESS', 'FAILED'] # Вероятность успеха выше
+playbook_dir = 'playbooks'
+playbooks = [f for f in os.listdir(playbook_dir) if f.endswith('.yml') or f.endswith('.yaml')]
+
+complexity_fail_rates = {
+    '03_k8s_workers.yml': 40,
+    '02_docker_stack.yml': 20,
+    '04_database_backup.yml': 25,
+    '01_nginx_advanced.yml': 15,
+    '05_secure_ssh.yml': 5,
+    '06_create_users.yml': 2
+}
+
+# Редкие фамилии и сервисные аккаунты
+users = {
+    'v.proskuryakov': 1.0, 
+    'd.yaguzhinsky': 0.7, 
+    't.bessoltsev': 1.5, 
+    's.rastorguev': 0.8,
+    'gitlab-runner': 0.4,
+    'jenkins-agent': 0.4
+}
 
 conn = get_connection()
 cursor = conn.cursor()
-
-# Генерируем 15 случайных запусков за последние 7 дней
 now = datetime.now()
-for _ in range(15):
+
+cursor.execute("DELETE FROM runs")
+
+for _ in range(50): 
     p_book = random.choice(playbooks)
-    user = random.choice(users)
-    status = random.choice(statuses)
+    user = random.choice(list(users.keys()))
     
-    # Генерируем случайное время старта
-    start_time = now - timedelta(days=random.randint(0, 7), hours=random.randint(0, 23))
-    # Длительность прокатки от 1 до 15 минут
-    end_time = start_time + timedelta(minutes=random.randint(1, 15))
+    base_fail_rate = complexity_fail_rates.get(p_book, 10)
+    final_fail_rate = min(base_fail_rate * users[user], 95)
+    
+    if random.uniform(0, 100) < final_fail_rate:
+        status = 'FAILED'
+    else:
+        status = 'SUCCESS'
+    
+    start_time = now - timedelta(days=random.randint(0, 14), hours=random.randint(0, 23))
+    end_time = start_time + timedelta(minutes=random.randint(1, 15), seconds=random.randint(0, 59))
     
     cursor.execute('''
         INSERT INTO runs (playbook_name, user, status, start_time, end_time)
@@ -32,5 +56,3 @@ for _ in range(15):
 
 conn.commit()
 conn.close()
-
-print("База данных успешно заполнена тестовыми прокатками!")

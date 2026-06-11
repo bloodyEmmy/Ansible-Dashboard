@@ -1,47 +1,111 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f4f6f9;
-    color: #333;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f8f6fa; /* Очень легкий серо-сиреневый фон */
+    color: #2c2c2c;
     margin: 0;
-    padding: 20px;
+    padding: 20px 40px;
 }
 
 .container {
-    max-width: 1000px;
+    max-width: 1400px;
     margin: 0 auto;
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-h1 {
-    margin-top: 0;
-    color: #2c3e50;
+header {
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e1dced;
 }
 
-.filters {
-    margin-bottom: 20px;
+header h1 {
+    margin: 0;
+    color: #4a3b69; /* Глубокий сиреневый */
+    font-size: 28px;
+}
+
+/* Сетка для дашборда: Фильтры слева, график справа */
+.dashboard-grid {
     display: flex;
-    gap: 10px;
+    gap: 30px;
+    margin-bottom: 30px;
 }
 
-.filters input, .filters button {
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+.panel {
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(100, 80, 120, 0.08);
 }
 
-.filters button {
-    background-color: #3498db;
+.filters-panel {
+    flex: 1;
+}
+
+.chart-panel {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+}
+
+h3 {
+    margin-top: 0;
+    color: #4a3b69;
+    margin-bottom: 20px;
+}
+
+.filter-group {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.filter-group label {
+    width: 160px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #5c4d7d;
+}
+
+.filter-group input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #d1c9de;
+    border-radius: 6px;
+    outline: none;
+    background-color: #fcfbff;
+}
+
+.filter-group input:focus {
+    border-color: #9b72cf;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background-color: #7b5ab5;
     color: white;
     border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 15px;
     cursor: pointer;
-    transition: 0.3s;
+    margin-top: 10px;
+    transition: background 0.2s;
 }
 
-.filters button:hover {
-    background-color: #2980b9;
+button:hover {
+    background-color: #634596;
+}
+
+/* Таблица на всю ширину */
+.table-panel {
+    width: 100%;
 }
 
 table {
@@ -50,15 +114,94 @@ table {
 }
 
 th, td {
-    padding: 12px;
+    padding: 16px 12px;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #eee9f2;
 }
 
 th {
-    background-color: #f8f9fa;
-    font-weight: 600;
+    color: #7b5ab5;
+    font-size: 13px;
+    text-transform: uppercase;
+    font-weight: 700;
+    background-color: #fdfcff;
 }
 
-.status-success { color: #27ae60; font-weight: bold; }
-.status-failed { color: #c0392b; font-weight: bold; }
+tbody tr:hover {
+    background-color: #f7f5fa;
+}
+
+.playbook-name { 
+    font-weight: 600; 
+    color: #594482; 
+    cursor: pointer;
+}
+
+.playbook-name:hover { 
+    color: #9b72cf; 
+    text-decoration: underline;
+}
+
+.time-col { 
+    color: #666; 
+    font-size: 14px;
+}
+
+/* Статусы */
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.badge.success { 
+    background-color: #e3fbed; 
+    color: #1b8a47; 
+}
+
+.badge.failed { 
+    background-color: #fbe6e8; 
+    color: #c92a3b; 
+}
+
+/* Всплывающее окно кода */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 100; 
+    left: 0; top: 0; width: 100%; height: 100%; 
+    background-color: rgba(30, 20, 40, 0.6); 
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background-color: #1e1b26;
+    color: #e2dbea;
+    margin: 5% auto; 
+    padding: 25px; 
+    border-radius: 10px;
+    width: 70%; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.close {
+    color: #888; 
+    float: right; 
+    font-size: 28px; 
+    font-weight: bold; 
+    cursor: pointer;
+}
+
+.close:hover { color: #fff; }
+
+pre {
+    background-color: #14121a;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    border: 1px solid #322b40;
+}

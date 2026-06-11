@@ -1,10 +1,8 @@
 import sqlite3
-from datetime import datetime
 
 DB_NAME = 'ansible_runs.db'
 
 def get_connection():
-    # Подключаемся к базе. row_factory позволяет обращаться к колонкам по имени: row['user']
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
@@ -12,7 +10,6 @@ def get_connection():
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
-    # Создаем таблицу, если ее нет
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,14 +23,13 @@ def init_db():
     conn.commit()
     conn.close()
 
-def get_runs(start_date=None, end_date=None, user=None):
+def get_runs(start_date=None, end_date=None, user=None, playbook=None):
     conn = get_connection()
     cursor = conn.cursor()
     
     query = "SELECT * FROM runs WHERE 1=1"
     params = []
 
-    # Динамически собираем SQL-запрос в зависимости от переданных фильтров
     if start_date:
         query += " AND start_time >= ?"
         params.append(start_date)
@@ -41,8 +37,11 @@ def get_runs(start_date=None, end_date=None, user=None):
         query += " AND end_time <= ?"
         params.append(end_date)
     if user:
-        query += " AND user = ?"
-        params.append(user)
+        query += " AND user LIKE ?"
+        params.append(f"%{user}%")
+    if playbook:
+        query += " AND playbook_name LIKE ?"
+        params.append(f"%{playbook}%")
         
     query += " ORDER BY start_time DESC"
     
@@ -50,5 +49,4 @@ def get_runs(start_date=None, end_date=None, user=None):
     rows = cursor.fetchall()
     conn.close()
     
-    # Преобразуем объекты БД в обычные словари для JSON
     return [dict(row) for row in rows]
