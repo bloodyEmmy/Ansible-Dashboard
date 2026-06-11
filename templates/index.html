@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ansible Run History</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard: История Ansible</h1>
+        
+        <div class="filters">
+            <input type="date" id="start_date" placeholder="Начало">
+            <input type="date" id="end_date" placeholder="Конец">
+            <input type="text" id="user" placeholder="Имя пользователя">
+            <button onclick="loadHistory()">Найти</button>
+        </div>
+
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Playbook</th>
+                    <th>Пользователь</th>
+                    <th>Статус</th>
+                    <th>Начало</th>
+                    <th>Конец</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Функция, которая ходит в наше API
+        async function loadHistory() {
+            // Собираем данные с полей
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const user = document.getElementById('user').value;
+
+            // Формируем URL с параметрами
+            let url = new URL('/api/history', window.location.origin);
+            if (startDate) url.searchParams.append('start_date', startDate + " 00:00:00");
+            if (endDate) url.searchParams.append('end_date', endDate + " 23:59:59");
+            if (user) url.searchParams.append('user', user);
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                const tbody = document.querySelector('#historyTable tbody');
+                tbody.innerHTML = ''; // Очищаем старые данные
+
+                // Рисуем новые данные
+                result.data.forEach(run => {
+                    const row = `<tr>
+                        <td>${run.id}</td>
+                        <td><strong>${run.playbook_name}</strong></td>
+                        <td>${run.user}</td>
+                        <td class="status-${run.status.toLowerCase()}">${run.status}</td>
+                        <td>${run.start_time}</td>
+                        <td>${run.end_time}</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error("Ошибка загрузки данных:", error);
+            }
+        }
+
+        // Загружаем всю историю при открытии страницы
+        window.onload = loadHistory;
+    </script>
+</body>
+</html>
