@@ -205,3 +205,29 @@ pre {
     font-size: 14px;
     border: 1px solid #322b40;
 }
+
+/* Стили для новых кнопок */
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-primary {
+    flex: 1;
+    background-color: #7b5ab5;
+}
+
+.btn-primary:hover {
+    background-color: #634596;
+}
+
+.btn-clear {
+    flex: 1;
+    background-color: #e1dced;
+    color: #4a3b69;
+}
+
+.btn-clear:hover {
+    background-color: #d1c9de;
+}

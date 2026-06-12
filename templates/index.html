@@ -32,7 +32,11 @@
                     <label>Название Playbook:</label>
                     <input type="text" id="playbook" placeholder="nginx">
                 </div>
-                <button onclick="loadHistory()">Применить фильтры</button>
+                
+                <div class="button-group">
+                    <button class="btn-clear" onclick="clearFilters()">Очистить всё</button>
+                    <button class="btn-primary" onclick="loadHistory()">Найти</button>
+                </div>
             </div>
             
             <div class="panel chart-panel">
@@ -49,7 +53,7 @@
                 <thead>
                     <tr>
                         <th>№</th>
-                        <th>Playbook (клик для просм.)</th>
+                        <th>Playbook (клик)</th>
                         <th>Пользователь</th>
                         <th>Статус</th>
                         <th>Запуск</th>
@@ -73,6 +77,15 @@
         let myChart = null;
         let myUserChart = null;
 
+        // --- Удобство интерфейса: автоудаление пробелов при вставке ---
+        ['user', 'playbook'].forEach(id => {
+            document.getElementById(id).addEventListener('paste', function(e) {
+                setTimeout(() => {
+                    this.value = this.value.trim();
+                }, 10);
+            });
+        });
+
         function formatRuDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleString('ru-RU', {
@@ -89,10 +102,16 @@
         }
 
         async function loadHistory() {
+            // Дополнительная зачистка на случай ручного ввода пробелов
+            const userField = document.getElementById('user');
+            const playbookField = document.getElementById('playbook');
+            userField.value = userField.value.trim();
+            playbookField.value = playbookField.value.trim();
+
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
-            const user = document.getElementById('user').value;
-            const playbook = document.getElementById('playbook').value;
+            const user = userField.value;
+            const playbook = playbookField.value;
 
             let url = new URL('/api/history', window.location.origin);
             if (startDate) url.searchParams.append('start_date', startDate + " 00:00:00");
@@ -113,17 +132,16 @@
                 let counter = 1;
 
                 result.data.forEach(run => {
-                    // Подсчет для первого графика
                     if (run.status === 'SUCCESS') successCount++;
                     else failedCount++;
 
-                    // Подсчет для второго графика
                     userCounts[run.user] = (userCounts[run.user] || 0) + 1;
 
+                    // Добавлены <span> для чистого копирования текста без табуляций ячейки
                     const row = `<tr>
                         <td>${counter++}</td>
-                        <td class="playbook-name" onclick="viewPlaybook('${run.playbook_name}')">${run.playbook_name}</td>
-                        <td>${run.user}</td>
+                        <td class="playbook-name" onclick="handlePlaybookClick(event, '${run.playbook_name}')"><span>${run.playbook_name}</span></td>
+                        <td><span>${run.user}</span></td>
                         <td><span class="badge ${run.status.toLowerCase()}">${run.status}</span></td>
                         <td class="time-col">${formatRuDate(run.start_time)}</td>
                         <td class="time-col">${getDuration(run.start_time, run.end_time)}</td>
@@ -136,48 +154,30 @@
             } catch (error) { console.error("Ошибка API:", error); }
         }
 
-        function updateStatusChart(success, failed) {
-            const ctx = document.getElementById('statusChart').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: { 
-                    labels: ['Успешно', 'Ошибка'], 
-                    datasets: [{ data: [success, failed], backgroundColor: ['#2ecc71', '#e74c3c'], borderWidth: 0 }] 
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-            });
+        function clearFilters() {
+            document.getElementById('start_date').value = '';
+            document.getElementById('end_date').value = '';
+            document.getElementById('user').value = '';
+            document.getElementById('playbook').value = '';
+            loadHistory(); 
         }
 
-        function updateUserChart(dataMap) {
-            const ctx = document.getElementById('userChart').getContext('2d');
-            if (myUserChart) myUserChart.destroy();
-            
-            myUserChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(dataMap),
-                    datasets: [{
-                        label: 'Количество запусков',
-                        data: Object.values(dataMap),
-                        backgroundColor: '#7b5ab5',
-                        borderRadius: 4
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                }
-            });
+        // --- Умный клик по плейбуку ---
+        function handlePlaybookClick(event, filename) {
+            // Получаем текст, который сейчас выделен мышкой
+            const selection = window.getSelection().toString();
+            // Если длина выделенного текста больше 0, значит пользователь копирует текст. Модалку не открываем.
+            if (selection.length > 0) {
+                return;
+            }
+            // Иначе это обычный клик — открываем код.
+            viewPlaybook(filename);
         }
 
         async function viewPlaybook(filename) {
             try {
                 const response = await fetch(`/api/playbook/${filename}`);
                 const result = await response.json();
-                
                 if (result.status === 'success') {
                     document.getElementById('modalTitle').innerText = filename;
                     document.getElementById('modalCode').innerText = result.content;
@@ -186,8 +186,29 @@
             } catch (error) { alert("Ошибка загрузки файла"); }
         }
 
-        function closeModal() {
-            document.getElementById('codeModal').style.display = "none";
+        function closeModal() { document.getElementById('codeModal').style.display = "none"; }
+
+        function updateStatusChart(success, failed) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['Успешно', 'Ошибка'], datasets: [{ data: [success, failed], backgroundColor: ['#2ecc71', '#e74c3c'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        function updateUserChart(dataMap) {
+            const ctx = document.getElementById('userChart').getContext('2d');
+            if (myUserChart) myUserChart.destroy();
+            myUserChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(dataMap),
+                    datasets: [{ label: 'Количество запусков', data: Object.values(dataMap), backgroundColor: '#7b5ab5', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            });
         }
 
         window.onload = loadHistory;
