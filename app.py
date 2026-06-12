@@ -8,19 +8,15 @@ import database
 app = Flask(__name__)
 
 def bootstrap_system():
-    """Функция автоматической сборки проекта при первом запуске"""
     db_exists = os.path.exists('ansible_runs.db')
     playbooks_exist = os.path.exists('playbooks')
 
-    # Если всё уже создано — пропускаем инициализацию
     if db_exists and playbooks_exist:
         return
 
-    print("Обнаружен первый запуск. Инициализация системы...")
     database.init_db()
     os.makedirs('playbooks', exist_ok=True)
 
-    # 1. Генерация файлов Playbooks
     playbooks_data = {
         "01_nginx_advanced.yml": "---\n- name: Advanced Nginx Setup\n  hosts: webservers\n  become: yes\n  tasks:\n    - name: Ensure Nginx is installed\n      apt:\n        name: nginx\n        state: latest",
         "02_docker_stack.yml": "---\n- name: Deploy Docker Stack\n  hosts: all\n  become: yes\n  tasks:\n    - name: Install Docker CE\n      apt:\n        name: docker-ce\n        state: present",
@@ -43,7 +39,6 @@ def bootstrap_system():
             f.write(content)
         playbooks.append(filename)
 
-    # 2. Генерация жесткой статистики в БД
     complexity_fail_rates = {
         '03_k8s_workers.yml': 85,
         '08_ssl_renewal.yml': 80,
@@ -70,12 +65,11 @@ def bootstrap_system():
     cursor = conn.cursor()
     now = datetime.now()
 
-    for _ in range(150): # Увеличили выборку до 150 запусков для графиков
+    for _ in range(150):
         p_book = random.choice(playbooks)
         user = random.choice(list(users.keys()))
         
         base_fail_rate = complexity_fail_rates.get(p_book, 50)
-        # Жесткая математика: минимум 25% ошибок для любого скрипта, максимум 90%
         final_fail_rate = max(min(base_fail_rate * users[user], 90), 25) 
         
         if random.uniform(0, 100) < final_fail_rate:
@@ -93,12 +87,8 @@ def bootstrap_system():
 
     conn.commit()
     conn.close()
-    print("Инициализация завершена. БД и скрипты готовы.")
 
-# Вызываем сборку перед регистрацией роутов
 bootstrap_system()
-
-# --- Веб-роуты ---
 
 @app.route('/')
 def index():

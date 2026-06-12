@@ -77,7 +77,6 @@
         let myChart = null;
         let myUserChart = null;
 
-        // --- Удобство интерфейса: автоудаление пробелов при вставке ---
         ['user', 'playbook'].forEach(id => {
             document.getElementById(id).addEventListener('paste', function(e) {
                 setTimeout(() => {
@@ -102,7 +101,6 @@
         }
 
         async function loadHistory() {
-            // Дополнительная зачистка на случай ручного ввода пробелов
             const userField = document.getElementById('user');
             const playbookField = document.getElementById('playbook');
             userField.value = userField.value.trim();
@@ -137,7 +135,6 @@
 
                     userCounts[run.user] = (userCounts[run.user] || 0) + 1;
 
-                    // Добавлены <span> для чистого копирования текста без табуляций ячейки
                     const row = `<tr>
                         <td>${counter++}</td>
                         <td class="playbook-name" onclick="handlePlaybookClick(event, '${run.playbook_name}')"><span>${run.playbook_name}</span></td>
@@ -162,15 +159,11 @@
             loadHistory(); 
         }
 
-        // --- Умный клик по плейбуку ---
         function handlePlaybookClick(event, filename) {
-            // Получаем текст, который сейчас выделен мышкой
             const selection = window.getSelection().toString();
-            // Если длина выделенного текста больше 0, значит пользователь копирует текст. Модалку не открываем.
             if (selection.length > 0) {
                 return;
             }
-            // Иначе это обычный клик — открываем код.
             viewPlaybook(filename);
         }
 
