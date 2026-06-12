@@ -30,12 +30,17 @@
                 </div>
                 <div class="filter-group">
                     <label>Название Playbook:</label>
-                    <input type="text" id="playbook" placeholder="nginx_proxy.yml">
+                    <input type="text" id="playbook" placeholder="nginx">
                 </div>
                 <button onclick="loadHistory()">Применить фильтры</button>
             </div>
+            
             <div class="panel chart-panel">
                 <canvas id="statusChart"></canvas>
+            </div>
+            
+            <div class="panel chart-panel">
+                <canvas id="userChart"></canvas>
             </div>
         </div>
 
@@ -43,7 +48,8 @@
             <table id="historyTable">
                 <thead>
                     <tr>
-                        <th>№</th> <th>Playbook (клик для просм.)</th>
+                        <th>№</th>
+                        <th>Playbook (клик для просм.)</th>
                         <th>Пользователь</th>
                         <th>Статус</th>
                         <th>Запуск</th>
@@ -65,8 +71,8 @@
 
     <script>
         let myChart = null;
+        let myUserChart = null;
 
-        // Преобразование даты в формат ДД.ММ.ГГГГ ЧЧ:ММ:СС
         function formatRuDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleString('ru-RU', {
@@ -101,12 +107,18 @@
                 const tbody = document.querySelector('#historyTable tbody');
                 tbody.innerHTML = ''; 
 
-                let successCount = 0, failedCount = 0;
-                let counter = 1; // Человеческий счетчик строк
+                let successCount = 0;
+                let failedCount = 0;
+                let userCounts = {};
+                let counter = 1;
 
                 result.data.forEach(run => {
+                    // Подсчет для первого графика
                     if (run.status === 'SUCCESS') successCount++;
                     else failedCount++;
+
+                    // Подсчет для второго графика
+                    userCounts[run.user] = (userCounts[run.user] || 0) + 1;
 
                     const row = `<tr>
                         <td>${counter++}</td>
@@ -119,8 +131,46 @@
                     tbody.innerHTML += row;
                 });
 
-                updateChart(successCount, failedCount);
+                updateStatusChart(successCount, failedCount);
+                updateUserChart(userCounts);
             } catch (error) { console.error("Ошибка API:", error); }
+        }
+
+        function updateStatusChart(success, failed) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { 
+                    labels: ['Успешно', 'Ошибка'], 
+                    datasets: [{ data: [success, failed], backgroundColor: ['#2ecc71', '#e74c3c'], borderWidth: 0 }] 
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        function updateUserChart(dataMap) {
+            const ctx = document.getElementById('userChart').getContext('2d');
+            if (myUserChart) myUserChart.destroy();
+            
+            myUserChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(dataMap),
+                    datasets: [{
+                        label: 'Количество запусков',
+                        data: Object.values(dataMap),
+                        backgroundColor: '#7b5ab5',
+                        borderRadius: 4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
         }
 
         async function viewPlaybook(filename) {
@@ -138,16 +188,6 @@
 
         function closeModal() {
             document.getElementById('codeModal').style.display = "none";
-        }
-
-        function updateChart(success, failed) {
-            const ctx = document.getElementById('statusChart').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: ['Успешно', 'Ошибка'], datasets: [{ data: [success, failed], backgroundColor: ['#2ecc71', '#e74c3c'], borderWidth: 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-            });
         }
 
         window.onload = loadHistory;
