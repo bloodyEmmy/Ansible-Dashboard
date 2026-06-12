@@ -47,16 +47,26 @@ python app.py
 Сервер предоставляет конечные точки для интеграции. Для структурированного вывода JSON рекомендуется использовать утилиту jq.
 
 Получить общую историю запусков:
-` curl -s "http://127.0.0.1:5000/api/history" | jq `
+```
+curl -s "http://127.0.0.1:5000/api/history" | jq
+```
 
 Отфильтровать данные по конкретному пользователю:
-` curl -s "http://127.0.0.1:5000/api/history?user=v.proskuryakov" | jq `
+```
+curl -s "http://127.0.0.1:5000/api/history?user=v.proskuryakov" | jq
+```
 
 Отфильтровать по названию исполняемого файла сценария:
-` curl -s "http://127.0.0.1:5000/api/history?playbook=02_docker_stack.yml" | jq `
+```
+curl -s "http://127.0.0.1:5000/api/history?playbook=02_docker_stack.yml" | jq
+```
 
 Комбинированный запрос (поиск по пользователю в заданном временном диапазоне):
-` curl -s "http://127.0.0.1:5000/api/history?user=gitlab-runner&start_date=2026-05-01&end_date=2026-06-30" | jq `
+```
+curl -s "http://127.0.0.1:5000/api/history?user=gitlab-runner&start_date=2026-05-01&end_date=2026-06-30" | jq
+```
 
 Прочитать исходный код конкретного сценария:
-` curl -s "http://127.0.0.1:5000/api/playbook/05_secure_ssh.yml" | jq `
+```
+curl -s "http://127.0.0.1:5000/api/playbook/05_secure_ssh.yml" | jq
+```
