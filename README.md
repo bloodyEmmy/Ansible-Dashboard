@@ -3,7 +3,8 @@
 Система аудита и мониторинга запусков конфигурационных сценариев (Ansible Playbooks). Сервис считывает статистику из реляционной базы данных SQLite и предоставляет веб-интерфейс с дашбордами, а также REST API для получения сырых данных в формате JSON.
 
 ## Структура проекта
-* `app.py` - серверная часть (Flask, API роуты, автоматическая генерация данных).
+* `app.py` - серверная часть (основной скрипт Flask, API роуты).
+* `generator.py` - логика первичной генерации тестовых данных (создание БД и YAML-файлов).
 * `database.py` - логика взаимодействия с БД SQLite.
 * `templates/` и `static/` - файлы frontend-части.
 * `Dockerfile` - инструкции для сборки Docker-образа.
@@ -11,30 +12,37 @@
 
 ## Запуск через Docker (Рекомендуемый способ)
 
+Внимание: Если у вас уже есть старая база `ansible_runs.db` и папка `playbooks/`, удалите их перед сборкой, чтобы генератор создал актуальные данные.
+
 1. Сборка Docker-образа:
 ```
 docker build -t ansible-dashboard .
 ```
 
-2. Запуск контейнера в фоновом режиме:
+2. Запуск контейнера в фоновом режиме (с пробросом текущей директории внутрь контейнера):
 ```
-docker run -d -p 5000:5000 --name audit-dashboard ansible-dashboard
+docker run -d -p 5000:5000 -v $(pwd):/app --name audit-dashboard ansible-dashboard
 ```
 
 После запуска интерфейс доступен по адресу: http://127.0.0.1:5000
 
 Для остановки контейнера:
-``` 
-docker stop audit-dashboard 
+```
+docker stop audit-dashboard
+```
+
+Для удаления контейнера:
+```
+docker rm audit-dashboard
 ```
 
 ## Локальный запуск (Без Docker)
 
 1. Создание виртуального окружения и установка зависимостей:
-``` 
+```
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt 
+pip install -r requirements.txt
 ```
 
 2. Запуск веб-сервера (при первом запуске БД и файлы сгенерируются автоматически):
@@ -68,5 +76,5 @@ curl -s "http://127.0.0.1:5000/api/history?user=gitlab-runner&start_date=2026-05
 
 Прочитать исходный код конкретного сценария:
 ```
-curl -s "http://127.0.0.1:5000/api/playbook/05_secure_ssh.yml" | jq
+curl -s "http://127.0.0.1:5000/api/playbook/05_postgresql_setup.yml" | jq
 ```
